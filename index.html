@@ -1,0 +1,128 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Macs Roasters Brewing Water Recio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Bebas Neue', sans-serif; }
+    input { margin-bottom: 8px; padding: 4px; }
+    label { display: inline-block; width: 160px; }
+    .ppm-label.origin { color: blue; }
+    .ppm-label.deeps, .deeps { color: green; }
+    .origin { color: blue; }
+    .e-display { color: blue; font-size: 1.2em; font-weight: normal; }
+    .result-row { display: flex; align-items: center; margin-top: 8px; }
+    .result-label { width: 60px; color: #666; }
+    .result-input { width: 100px; margin-right: 12px; text-align: right; border: none; background: #f9f9f9; font-weight: bold; }
+    .result-value { color: red; font-weight: normal; }
+  </style>
+</head>
+<body>
+  <h2 style="font-weight: normal;">Macs Roasters<br>Brewing Water Recio</h2>
+
+  <label for="gh">원수 GH 방울 수:</label>
+  <input type="number" id="gh" value="14" oninput="updateAll()">
+  <span id="ghPpm" class="ppm-label origin"></span><br>
+
+  <label for="kh">원수 KH 방울 수:</label>
+  <input type="number" step="0.01" id="kh" value="10" oninput="updateAll()">
+  <span id="khPpm" class="ppm-label origin"></span><br><div class="e-display" id="eValue" class="origin"></div><br>
+
+  <label for="dgh">Deeps GH 방울 수:</label>
+  <input type="number" id="dgh" value="26.46" oninput="updateAll()">
+  <span id="dghPpm" class="ppm-label deeps"></span><br>
+
+  <label for="dkh">Deeps KH 방울 수:</label>
+  <input type="number" step="0.01" id="dkh" value="1.79" oninput="updateAll()">
+  <span id="dkhPpm" class="ppm-label deeps"></span><br><div class="e-display deeps" id="deepsEValue" style="color: green;"></div><br>
+
+  
+
+  <label for="eTarget">원하는 E 상수값:</label>
+  <input type="number" step="0.01" id="eTarget" value="2.00" oninput="updateAll()"><br>
+
+  <label for="total">물의 양 (g):</label>
+  <input type="number" id="total" value="2000" oninput="updateAll()"><br><br>
+
+  <div id="result" class="result-row"></div>
+  <div id="result2" class="result-row"></div>
+  <div id="result3" class="result-row" style="margin-top:16px;"></div>
+
+  <script>
+    const ppmPerDrop = 4.46;
+
+    function updateAll() {
+      const gh = parseFloat(document.getElementById("gh").value) || 0;
+      const kh = parseFloat(document.getElementById("kh").value) || 0;
+      const dgh = parseFloat(document.getElementById("dgh").value) || 0;
+      const dkh = parseFloat(document.getElementById("dkh").value) || 0;
+
+      const ghPpm = gh * ppmPerDrop;
+      const khPpm = kh * ppmPerDrop;
+      const dghPpm = dgh * ppmPerDrop;
+      const dkhPpm = dkh * ppmPerDrop;
+
+      const e = khPpm === 0 ? "∞" : (ghPpm / khPpm).toFixed(2);
+
+      document.getElementById("ghPpm").innerText = `= ${ghPpm.toFixed(2)} ppm`;
+      document.getElementById("khPpm").innerText = `= ${khPpm.toFixed(2)} ppm`;
+      document.getElementById("dghPpm").innerText = `= ${dghPpm.toFixed(2)} ppm`;
+      document.getElementById("dkhPpm").innerText = `= ${dkhPpm.toFixed(2)} ppm`;
+      document.getElementById("eValue").innerText = `E(GH/KH) = ${e}`;
+      const eDeeps = dkhPpm === 0 ? '∞' : (dghPpm / dkhPpm).toFixed(2);
+      document.getElementById("deepsEValue").innerText = `Deeps E(GH/KH) = ${eDeeps}`;
+
+      const eTarget = parseFloat(document.getElementById("eTarget").value);
+      const total = parseFloat(document.getElementById("total").value);
+      const ghA = ghPpm;
+      const khA = khPpm;
+      const ghB = dghPpm;
+      const khB = dkhPpm;
+
+      const numerator = eTarget * khB - ghB;
+      const denominator = (ghA - ghB) - eTarget * (khA - khB);
+
+      if (denominator === 0 || isNaN(numerator) || isNaN(denominator)) {
+        document.getElementById("result").innerHTML = "계산 불가: 수식 오류 또는 입력 부족.";
+        document.getElementById("result2").innerHTML = "";
+        document.getElementById("result3").innerHTML = "";
+        return;
+      }
+
+      const x = numerator / denominator;
+
+      if (x < 0 || x > 1) {
+        document.getElementById("result").innerHTML = "계산 불가: 혼합 비율이 0~100% 범위를 초과합니다.";
+        document.getElementById("result2").innerHTML = "";
+        document.getElementById("result3").innerHTML = "";
+        return;
+      }
+
+      const a = Math.round(x * total);
+      const b = total - a;
+      const ghFinal = (ghA * a + ghB * b) / total;
+      const khFinal = (khA * a + khB * b) / total;
+      const eFinal = khFinal === 0 ? "∞" : (ghFinal / khFinal).toFixed(2);
+
+      document.getElementById("result").innerHTML = `
+        <div class="result-label">Deeps</div>
+        <input class="result-input" value="${b}" readonly>
+        <div class="result-value">GH = ${ghFinal.toFixed(0)}</div>
+      `;
+      document.getElementById("result2").innerHTML = `
+        <div class="result-label">원수</div>
+        <input class="result-input" value="${a}" readonly>
+        <div class="result-value">KH = ${khFinal.toFixed(0)}</div>
+      `;
+      document.getElementById("result3").innerHTML = `
+        <div class="result-label">e상수</div>
+        <div class="result-value">${eFinal}</div>
+      `;
+    }
+
+    updateAll();
+  </script>
+</body>
+</html>
